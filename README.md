@@ -2,7 +2,7 @@
 
 <img src="https://media.cyberhawkthreatintel.com/general/1771234479938-y9566.png" width="140" alt="CyberHawk Logo" />
 
-# CyberHawk Threat Intel Platform — Docker
+# CyberHawk Threat Intel Platform — Cyber Incident Investigation Self Contained Docker
 
 ### AI-powered, self-hosted cyber investigation platform
 **Upload evidence. Tell Claude what you want. Get a full investigation report.**
@@ -293,7 +293,7 @@ Claude will automatically:
 
 ## 755 Cybersecurity Skills
 
-All skills bundled from [mukul975/Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills).
+All skills focused on CyberSecurity Incident Investigation core skills.
 
 Each skill contains:
 - `SKILL.md` — full investigation methodology, commands, checklists, and expected outputs
