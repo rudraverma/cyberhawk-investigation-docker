@@ -2,7 +2,7 @@
 
 <img src="https://media.cyberhawkthreatintel.com/general/1771234479938-y9566.png" width="140" alt="CyberHawk Logo" />
 
-# CyberHawk Threat Intel Platform — Cyber Incident Investigation Self Contained Docker
+# Cyber Incident Investigation Self Contained Docker build by CyberHawk Threat Intel
 
 ### AI-powered, self-hosted cyber investigation platform
 **Upload evidence. Tell Claude what you want. Get a full investigation report.**
