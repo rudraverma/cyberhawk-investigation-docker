@@ -1,0 +1,13 @@
+{
+  "platformName":   "CYBERHAWK",
+  "heroTitle":      "THREAT INTEL PLATFORM",
+  "heroSubtitle":   "THREAT INTEL PLATFORM",
+  "tagline":        "HUNT. ANALYSE. REPORT.",
+  "welcomeMessage": "",
+  "analystName":    "",
+  "organisation":   "",
+  "tlpDefault":     "TLP:AMBER",
+  "footerText":     "CyberHawk Threat Intel",
+  "statusLabel":    "LIVE",
+  "logoOverride":   false
+}

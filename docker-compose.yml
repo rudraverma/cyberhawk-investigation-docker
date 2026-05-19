@@ -1,0 +1,121 @@
+services:
+
+  cyberhawk-ui:
+    build:
+      context: ./cyberhawk-ui
+      dockerfile: Dockerfile
+    container_name: cyberhawk-ui
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    depends_on:
+      cyberhawk-api:
+        condition: service_healthy
+    networks:
+      - cyberhawk-net
+
+  cyberhawk-api:
+    build:
+      context: ./cyberhawk-api
+      dockerfile: Dockerfile
+    container_name: cyberhawk-api
+    restart: unless-stopped
+    ports:
+      - "3002:8000"
+    volumes:
+      - cyberhawk-data:/workspace
+      - ./skills:/workspace/.agents/skills:ro
+      - ./workspace/config:/workspace/config
+      - ./cyberhawk-api/app:/app/app
+    env_file:
+      - .env
+    environment:
+      - WORKSPACE=/workspace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cyberhawk-net
+
+  # ── Specialist containers ────────────────────────────────────
+  # All mount cyberhawk-data:/workspace to share evidence + cases
+
+  sift-remnux:
+    # Full SIFT + REMnux — CORE forensics container (malware, disk, memory analysis)
+    # Ref: https://github.com/digitalsleuth/sift-remnux
+    # SSH: ssh forensics@<your-server-ip> -p 2233
+    # ⚠️  SECURITY: Change default password after first login — passwd forensics
+    build:
+      context: ./sift-remnux
+      dockerfile: Dockerfile
+    container_name: cyberhawk-sift-remnux
+    restart: unless-stopped
+    ports:
+      - "2233:22"
+    volumes:
+      - cyberhawk-data:/workspace
+    cap_add:
+      - SYS_ADMIN    # Required for FUSE filesystem mounts (E01, AFF, BDE, VSS)
+      - MKNOD        # Required for device node creation
+    privileged: true # Required by SIFT for forensic mount operations
+    devices:
+      - "/dev/fuse:/dev/fuse"
+    networks:
+      - cyberhawk-net
+
+  cracking:
+    # hashcat v7.1.1 (CPU/POCL) + John the Ripper — for locked evidence
+    build:
+      context: ./cracking
+      dockerfile: Dockerfile
+    container_name: cyberhawk-cracking
+    restart: unless-stopped
+    volumes:
+      - cyberhawk-data:/workspace
+    networks:
+      - cyberhawk-net
+    # GPU passthrough (NVIDIA) — uncomment when nvidia-container-toolkit installed:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  crypto-email:
+    # GPG + email forensics — eml analysis, mpack, swaks, OpenSSL
+    build:
+      context: ./crypto-email
+      dockerfile: Dockerfile
+    container_name: cyberhawk-crypto-email
+    restart: unless-stopped
+    volumes:
+      - cyberhawk-data:/workspace
+    networks:
+      - cyberhawk-net
+
+  kali:
+    # Pentesting tools — ON-DEMAND ONLY (secondary to forensics mission)
+    # Start with: docker compose --profile pentest up -d kali
+    profiles: ["pentest"]
+    build:
+      context: ./kali
+      dockerfile: Dockerfile
+    container_name: cyberhawk-kali
+    restart: unless-stopped
+    volumes:
+      - cyberhawk-data:/workspace
+    networks:
+      - cyberhawk-net
+
+volumes:
+  cyberhawk-data:
+    driver: local
+
+networks:
+  cyberhawk-net:
+    driver: bridge

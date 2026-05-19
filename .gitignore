@@ -1,0 +1,40 @@
+# ── Secrets & personal config ─────────────────────────────────────────────────
+.env
+workspace/config/branding.json
+workspace/config/logo.*
+
+# ── Claude Code + MCP settings (contain your server IP — don't commit)
+.claude/settings.json
+.mcp.json
+.mcp.local.json
+
+# ── Evidence & case data (NEVER commit — may contain malware or sensitive intel)
+workspace/upload/*
+workspace/investigations/*
+!workspace/upload/.gitkeep
+!workspace/investigations/.gitkeep
+
+# ── Skills (bundled — 755 folders from mukul975/Anthropic-Cybersecurity-Skills)
+# Uncomment the lines below if you want to exclude them and clone separately
+# skills/*
+# !skills/.gitkeep
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+
+# ── Node / React ──────────────────────────────────────────────────────────────
+cyberhawk-ui/node_modules/
+cyberhawk-ui/dist/
+
+# ── OS & editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

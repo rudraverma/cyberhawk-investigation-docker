@@ -1,0 +1,65 @@
+# ── API framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.12
+aiofiles==24.1.0
+websockets==13.1
+
+# ── Email / Office analysis ───────────────────────────────────────────────────
+extract-msg==0.55.0
+oletools==0.60.2
+python-magic==0.4.27
+XLMMacroDeobfuscator
+beautifulsoup4
+lxml
+defusedxml
+
+# ── Binary / malware analysis ─────────────────────────────────────────────────
+yara-python
+pefile==2024.8.26
+pyelftools
+capstone
+r2pipe
+
+# ── JS deobfuscation ──────────────────────────────────────────────────────────
+jsbeautifier
+
+# ── Memory forensics ──────────────────────────────────────────────────────────
+volatility3
+
+# ── Network / packet analysis ─────────────────────────────────────────────────
+scapy
+dpkt
+dnspython
+python-whois
+
+# ── Windows artefact parsing ──────────────────────────────────────────────────
+python-evtx
+regipy
+LnkParse3
+
+# ── Threat intel / IOC formats ────────────────────────────────────────────────
+stix2
+taxii2-client
+mitreattack-python
+
+# ── Crypto / encoding ─────────────────────────────────────────────────────────
+cryptography
+pycryptodome
+
+# ── Data / reporting ──────────────────────────────────────────────────────────
+pandas
+pyyaml
+markdown==3.7
+
+# ── Network protocol / AD analysis ───────────────────────────────────────────
+impacket
+ldap3
+paramiko
+
+# ── HTTP / enrichment ─────────────────────────────────────────────────────────
+httpx==0.27.2
+requests==2.32.3
+
+# ── PTY for web terminal ──────────────────────────────────────────────────────
+ptyprocess==0.7.0
