@@ -63,3 +63,8 @@ requests==2.32.3
 
 # ── PTY for web terminal ──────────────────────────────────────────────────────
 ptyprocess==0.7.0
+
+# ── Headless browser / phishing investigation ─────────────────────────────────
+playwright==1.60.0
+playwright-stealth==2.0.3
+httpx[socks]

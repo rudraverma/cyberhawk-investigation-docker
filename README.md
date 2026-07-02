@@ -39,6 +39,34 @@ Everything happens inside the Docker container. Nothing touches your host machin
 
 ---
 
+## Automated Investigation Pipeline
+
+Every submission — a **URL** or an uploaded **file** — is auto-triaged the moment it arrives. The pipeline routes each evidence type to the right tool and pre-populates the case folder, so the analyst (you or Claude) starts from decoded artifacts, not raw bytes. A `TOOLS_MANDATE.md` is written into every case listing what already ran and which tools to use next.
+
+### URL investigation
+
+DNS / WHOIS / TLS / HTTP recon → security-header audit → **Thug** drive-by/exploit detection → **EtherHiding blockchain-C2 detection** (eth_call / smart-contract dead-drop) → automatic ABI decode, C2 payload fetch, multi-stage chain-following, and deobfuscation.
+
+### Evidence file auto-triage — routed to the right tool
+
+| Evidence | Tool driven automatically | Key outputs |
+|---|---|---|
+| **Script** `.ps1 .js .vbs .bat .hta .wsf` | deobfuscator + isolated sandbox, multi-layer decode, C2 chain-follow | `*_beautified.{ps1,js}`, `*.iocs.json`, `*.sandbox.json`, `decode_chain.md` |
+| **PE / ELF** | `capa` (MITRE ATT&CK) + `floss` + `speakeasy` emulation | `capa.json`, `floss.json`, `speakeasy_output.txt` |
+| **Office** `.doc .docx .xls .xlsm` | `olevba` macro extraction/decode | `olevba.txt` |
+| **PDF** | `pdfid` + `pdf-parser` → embedded JS deobfuscated | `pdfid.txt`, `pdf_js_beautified.js` |
+| **Archive** `.zip .7z .rar .iso` | extract (password from analyst notes) → **recurse-triage each file** | `extracted/`, per-file analysis |
+| **Email** `.eml .msg` | headers + attachments → **recurse-triage each** | `email_headers.json`, `attachments/` |
+| **APK** | `apktool` manifest + dangerous-permission flags | `apk_manifest.xml`, `apk_permissions.txt` |
+| **PCAP** | `tshark` protocol / DNS / HTTP / TLS-SNI extraction | `pcap_dns.txt`, `pcap_http.txt`, `pcap_tls_sni.txt` |
+| **All types** | YARA scan + IOC aggregation + `TOOLS_MANDATE.md` | `yara_matches.txt`, `iocs.json`, `TOOLS_MANDATE.md` |
+
+### Deobfuscation + isolated sandbox
+
+Obfuscated JavaScript / PowerShell is decoded through a companion **deobfuscator** service (multi-layer XOR, base-N, string-concat, pretty-printing) and, when static decoding leaves runtime-only obfuscation (`atob`+XOR+`new Function`, `TextDecoder` byte loops), the payload is **executed in a network-isolated sandbox** (`network_mode: none`, read-only, no privileges) to capture live C2 URLs, decoded inner payloads, and clipboard/ClickFix commands. Service endpoints are configurable via environment variables (see below) — nothing is hardcoded.
+
+---
+
 ## Platform Components
 
 ### Core Stack (always running)
@@ -428,6 +456,20 @@ SHODAN_API_KEY=
 
 # NOT required — Claude Code uses your Pro plan OAuth via MCP, not this key
 ANTHROPIC_API_KEY=
+
+# ── Investigation service endpoints ──────────────────────────────────────────
+# The pipeline reaches these companion services. Defaults are docker service
+# names; if a service runs on the host network, set the full URL with your
+# host/IP here instead. Nothing is hardcoded in the source.
+DEOBFUSCATOR_URL=http://cyberhawk-deobfuscator:3020/deobfuscate
+MITM_PROXY=http://ch-ether-proxy:8095
+ETHERHAWK_WEBHOOK_URL=http://ch-ether-api:8094/webhook/etherhiding-confirmed
+
+# EtherHawk webhook shared secret — CHANGE THIS to a random value
+ETHERHAWK_WEBHOOK_SECRET=change-me-to-a-random-secret
+
+# UI: MITM live-view iframe URL (build-time, Vite) — leave blank to disable
+VITE_MITM_URL=
 ```
 
 ---

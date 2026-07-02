@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from app.core.workspace import WORKSPACE, UPLOAD_DIR, CASES_DIR, safe_path
+from app.routers.queue import queue_add, queue_remove, queue_clear
 
 router = APIRouter()
 
@@ -43,20 +44,14 @@ def _entry(p: Path) -> dict:
 
 # ── Upload ────────────────────────────────────────────────────────────────────
 
-MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB hard limit per file
-
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     dest = UPLOAD_DIR / file.filename
-    received = 0
     async with aiofiles.open(dest, "wb") as f:
-        while chunk := await file.read(65536):
-            received += len(chunk)
-            if received > MAX_UPLOAD_BYTES:
-                dest.unlink(missing_ok=True)
-                raise HTTPException(413, "File exceeds 2 GB upload limit")
-            await f.write(chunk)
-    return {"filename": file.filename, "size": dest.stat().st_size, **_hash_file(dest)}
+        await f.write(await file.read())
+    size = dest.stat().st_size
+    seq = queue_add(file.filename, size)
+    return {"filename": file.filename, "size": size, "seq": seq, **_hash_file(dest)}
 
 
 @router.get("/upload")
@@ -113,7 +108,12 @@ def delete_file(body: PathBody):
     target = safe_path(body.path)
     if not target.exists():
         raise HTTPException(404, "Not found")
+    filename = target.name
     shutil.rmtree(target) if target.is_dir() else target.unlink()
+    try:
+        queue_remove(filename)
+    except Exception:
+        pass
     return {"ok": True}
 
 
@@ -159,7 +159,6 @@ class CaseBody(BaseModel):
 
 @router.post("/case")
 def create_case(body: CaseBody):
-    # name may be "2026-05-15/phishing-may" or just "phishing-may"
     parts = body.name.strip("/").split("/", 1)
     if len(parts) == 2 and len(parts[0]) == 10:
         date_str, slug = parts

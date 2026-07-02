@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { CYBER_STYLES, C, MatrixRain, LOGO_URL } from './components/CyberHawkUI';
-import { LayoutDashboard, Upload, FolderOpen, Terminal, Settings, Plus, Shield } from 'lucide-react';
+import { LayoutDashboard, Upload, FolderOpen, Terminal, Settings, Plus, Shield, Globe, Activity } from 'lucide-react';
 
 import Dashboard        from './pages/Dashboard';
 import UploadZone       from './pages/UploadZone';
@@ -10,18 +10,24 @@ import ReportViewer     from './pages/ReportViewer';
 import TerminalPage     from './pages/Terminal';
 import SettingsPage     from './pages/Settings';
 import NewInvestigation from './pages/NewInvestigation';
+import SubmitUrl        from './pages/SubmitUrl';
+import TriageFile       from './pages/TriageFile';
+import MitmPage         from './pages/MitmPage';
 
 // ── Branding context ──────────────────────────────────────────────────────────
 export const BrandingCtx = createContext({});
 export function useBranding() { return useContext(BrandingCtx); }
 
 const NAV = [
-  { to: '/',        icon: LayoutDashboard, label: 'DASHBOARD'    },
-  { to: '/upload',  icon: Upload,          label: 'UPLOAD'        },
-  { to: '/files',   icon: FolderOpen,      label: 'FILES'         },
-  { to: '/new',     icon: Plus,            label: 'NEW CASE'      },
-  { to: '/terminal',icon: Terminal,        label: 'TERMINAL'      },
-  { to: '/settings',icon: Settings,        label: 'SETTINGS'      },
+  { to: '/',          icon: LayoutDashboard, label: 'DASHBOARD'   },
+  { to: '/upload',    icon: Upload,          label: 'UPLOAD'       },
+  { to: '/submit-url',icon: Globe,           label: 'SUBMIT URL'   },
+  { to: '/triage',    icon: Shield,          label: 'TRIAGE'       },
+  { to: '/files',     icon: FolderOpen,      label: 'FILES'        },
+  { to: '/new',       icon: Plus,            label: 'NEW CASE'     },
+  { to: '/terminal',  icon: Terminal,        label: 'TERMINAL'     },
+  { to: '/settings',  icon: Settings,        label: 'SETTINGS'     },
+  { to: '/mitm',      icon: Activity,        label: 'MITM'         },
 ];
 
 export default function App() {
@@ -103,13 +109,16 @@ export default function App() {
           {/* ── Page content ── */}
           <main style={{ flex: 1, position: 'relative', zIndex: 5, padding: '1.5rem', overflowY: 'auto' }}>
             <Routes>
-              <Route path="/"         element={<Dashboard />} />
-              <Route path="/upload"   element={<UploadZone />} />
-              <Route path="/files/*"  element={<FileBrowser />} />
-              <Route path="/view"     element={<ReportViewer />} />
-              <Route path="/new"      element={<NewInvestigation />} />
-              <Route path="/terminal" element={<TerminalPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/"            element={<Dashboard />} />
+              <Route path="/upload"      element={<UploadZone />} />
+              <Route path="/submit-url"  element={<SubmitUrl />} />
+              <Route path="/files/*"     element={<FileBrowser />} />
+              <Route path="/view"        element={<ReportViewer />} />
+              <Route path="/new"         element={<NewInvestigation />} />
+              <Route path="/terminal"    element={<TerminalPage />} />
+              <Route path="/settings"    element={<SettingsPage />} />
+              <Route path="/triage"      element={<TriageFile />} />
+              <Route path="/mitm"        element={<MitmPage />} />
             </Routes>
           </main>
 

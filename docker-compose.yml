@@ -27,10 +27,16 @@ services:
       - ./skills:/workspace/.agents/skills:ro
       - ./workspace/config:/workspace/config
       - ./cyberhawk-api/app:/app/app
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker CLI — for Thug via docker exec
     env_file:
       - .env
     environment:
       - WORKSPACE=/workspace
+      - MITM_PROXY=${MITM_PROXY:-http://ch-ether-proxy:8095}
+      - DEOBFUSCATOR_URL=${DEOBFUSCATOR_URL:-http://cyberhawk-deobfuscator:3020/deobfuscate}
+      - ETHERHAWK_WEBHOOK_URL=${ETHERHAWK_WEBHOOK_URL:-http://ch-ether-api:8094/webhook/etherhiding-confirmed}
+      - ETHERHAWK_WEBHOOK_SECRET=${ETHERHAWK_WEBHOOK_SECRET:-}
+      - REMNUX_CONTAINER=cyberhawk-sift-remnux          # for Thug docker exec
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 15s
@@ -44,23 +50,25 @@ services:
   # All mount cyberhawk-data:/workspace to share evidence + cases
 
   sift-remnux:
-    # Full SIFT + REMnux — CORE forensics container (malware, disk, memory analysis)
-    # Ref: https://github.com/digitalsleuth/sift-remnux
-    # SSH: ssh forensics@<your-server-ip> -p 2233
-    # ⚠️  SECURITY: Change default password after first login — passwd forensics
+    # REMnux malware analysis suite + FastMCP bridge for Claude Code
+    # Base: remnux/remnux-distro:noble (Ubuntu 24.04)
+    # Tools: Ghidra, capa, FLOSS, Speakeasy, radare2, Volatility3, apktool, jadx, YARA, Thug
+    # MCP endpoint: http://<server-ip>:3004/mcp
     build:
       context: ./sift-remnux
       dockerfile: Dockerfile
     container_name: cyberhawk-sift-remnux
     restart: unless-stopped
     ports:
-      - "2233:22"
+      - "3004:3004"   # REMnux MCP — Claude Code connects here
     volumes:
       - cyberhawk-data:/workspace
+    environment:
+      - REMNUX_MCP_PORT=3004
     cap_add:
-      - SYS_ADMIN    # Required for FUSE filesystem mounts (E01, AFF, BDE, VSS)
-      - MKNOD        # Required for device node creation
-    privileged: true # Required by SIFT for forensic mount operations
+      - SYS_ADMIN
+      - MKNOD
+    privileged: true
     devices:
       - "/dev/fuse:/dev/fuse"
     networks:
@@ -109,6 +117,27 @@ services:
     restart: unless-stopped
     volumes:
       - cyberhawk-data:/workspace
+    networks:
+      - cyberhawk-net
+
+  ghidra:
+    # GhidraMCP — AI-controlled reverse engineering via MCP
+    # Exposes 27 Ghidra tools (decompile, disassemble, rename, xrefs, etc.) to Claude Code
+    # ON-DEMAND: docker compose --profile reverse-eng up -d ghidra
+    # MCP SSE endpoint: http://<server-ip>:8083/sse
+    profiles: ["reverse-eng-retired"]
+    build:
+      context: ./cyberhawk-ghidra
+      dockerfile: Dockerfile
+    container_name: cyberhawk-ghidra
+    restart: unless-stopped
+    shm_size: '2gb'
+    ports:
+      - "8083:8081"   # MCP SSE bridge — Claude Code connects here
+    volumes:
+      - cyberhawk-data:/workspace
+    environment:
+      - MAXMEM=4G     # Ghidra JVM heap (increase for large binaries)
     networks:
       - cyberhawk-net
 
