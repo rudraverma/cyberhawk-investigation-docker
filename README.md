@@ -27,15 +27,21 @@ CyberHawk Docker is a **fully self-hosted, AI-native cyber investigation platfor
 ### The investigation loop
 
 ```
-You: "I uploaded invoice.exe — find the C2 server and give me all IOCs"
+Submit a URL or upload a file  (Web UI or API)
   │
-  └─► Claude calls list_upload → triage_file → run_skill → execute_cmd (×N) → write_file
-         confirms file       detects PE,     loads skill    runs strings,      saves IOCs,
-                             recommends      methodology    pefile, yara,      timeline,
-                             skill chain                    capstone           full report
+  ├─► Automated pipeline runs immediately, before you do anything:
+  │     • URL  → DNS/WHOIS/TLS/HTTP recon, Thug drive-by, EtherHiding blockchain-C2
+  │              detect, deobfuscate + multi-stage chain-follow
+  │     • File → routed by type → capa/floss/speakeasy · olevba · pdfid ·
+  │              deobfuscator+sandbox · tshark · apktool · 7z-recurse
+  │              + YARA + IOC aggregation + TOOLS_MANDATE.md
+  │
+  └─► Then you ask Claude (via MCP) to go deeper:
+        "find the C2 and give me all IOCs" → Claude reads the pre-decoded
+        artifacts, runs the mandated tools, and writes the structured report.
 ```
 
-Everything happens inside the Docker container. Nothing touches your host machine.
+Everything happens inside the Docker containers. Nothing touches your host machine.
 
 ---
 
@@ -107,21 +113,27 @@ All containers share a single Docker named volume (`cyberhawk-data`) mounted at 
 │  │  React 18 + Vite    │◄───│  FastAPI + uvicorn                  │ │
 │  │  nginx reverse proxy│    │  MCP SSE + HTTP transport           │ │
 │  │                     │    │  755 skills (read-only mount)       │ │
-│  │  Pages:             │    │  Analysis tools (see below)         │ │
-│  │  • Dashboard        │    │  Skill execution engine             │ │
-│  │  • Upload Zone      │    │  WebSocket PTY terminal             │ │
-│  │  • File Browser     │    │  File management API                │ │
-│  │  • Report Viewer    │    └──────────────┬──────────────────────┘ │
-│  │  • Web Terminal     │                   │                        │
-│  │  • New Investigation│    ┌──────────────▼──────────────────────┐ │
-│  │  • Settings         │    │  Specialist Containers              │ │
-│  └─────────────────────┘    │  cyberhawk-sift-remnux  (forensics) │ │
-│                             │  cyberhawk-cracking     (cracking)  │ │
-│                             │  cyberhawk-crypto-email (email)     │ │
-│                             │  cyberhawk-kali         (pentest)   │ │
-│                             └──────────────┬──────────────────────┘ │
-│                                            │                        │
-│  ┌─────────────────────────────────────────▼──────────────────────┐ │
+│  │  Pages:             │    │  Automated investigation pipeline:  │ │
+│  │  • Dashboard        │    │   URL recon + EtherHiding detect    │ │
+│  │  • Upload Zone      │    │   Evidence auto-triage (by type)    │ │
+│  │  • Submit URL       │    │   YARA · IOC aggregation · MANDATE  │ │
+│  │  • Triage File      │    │  Skill execution engine             │ │
+│  │  • File Browser     │    │  Analysis tools (see below)         │ │
+│  │  • Report Viewer    │    │  WebSocket PTY terminal             │ │
+│  │  • MITM Live View   │    │  File management API                │ │
+│  │  • Web Terminal     │    └──────────┬───────────────┬──────────┘ │
+│  │  • New Investigation│               │               │            │
+│  │  • Settings         │    ┌──────────▼─────────┐  ┌──▼──────────┐ │
+│  └─────────────────────┘    │ Specialist         │  │ Companion   │ │
+│                             │ Containers         │  │ services    │ │
+│                             │ sift-remnux        │  │ (configured │ │
+│                             │  (capa/floss/      │  │  via env):  │ │
+│                             │   speakeasy/yara)  │  │ deobfuscator│ │
+│                             │ cracking · kali    │  │  + isolated │ │
+│                             │ crypto-email       │  │  sandbox    │ │
+│                             └──────────┬─────────┘  └─────────────┘ │
+│                                        │                            │
+│  ┌─────────────────────────────────────▼──────────────────────────┐ │
 │  │  Named Volume: cyberhawk-data  →  /workspace/                  │ │
 │  │  ├── upload/           ← evidence drop zone                    │ │
 │  │  ├── investigations/   ← structured case folders               │ │
@@ -130,6 +142,8 @@ All containers share a single Docker named volume (`cyberhawk-data`) mounted at 
 │  └────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> The **deobfuscator** and **network-isolated sandbox** are companion services reached over the URLs in `DEOBFUSCATOR_URL` / `MITM_PROXY` (see [Environment Variables](#environment-variables)). They run as their own compose stacks, so the core platform stays lean and they can be swapped or scaled independently.
 
 ---
 
@@ -165,8 +179,8 @@ All containers share a single Docker named volume (`cyberhawk-data`) mounted at 
 ### 1. Clone
 
 ```bash
-git clone https://github.com/cyberhawkthreatintel/cyberhawk-docker.git
-cd cyberhawk-docker
+git clone https://github.com/rudraverma/cyberhawk-investigation-docker.git
+cd cyberhawk-investigation-docker
 ```
 
 ### 2. Configure environment
@@ -264,8 +278,11 @@ Claude uses these automatically during investigations:
 |---|---|
 | **Dashboard** | Overview — recent cases, upload queue, platform status |
 | **Upload Zone** | Drag-and-drop evidence files — all uploads go to `/workspace/upload/` |
+| **Submit URL** | Submit a URL for automated investigation — live streaming log of every phase (recon → Thug → EtherHiding → deobfuscation) |
+| **Triage File** | Kick off automated evidence triage on an uploaded file — routed to the right tool by type, live log |
 | **File Browser** | Browse cases and workspace files, read reports, download artefacts |
 | **Report Viewer** | Render Markdown investigation reports from case folders |
+| **MITM Live View** | Watch decrypted HTTP/S traffic in real time while a URL investigation runs (companion mitmproxy) |
 | **Web Terminal** | Full PTY bash shell inside the container — run tools manually |
 | **New Investigation** | Create a named case folder with pre-populated `notes.md` |
 | **Settings** | Platform branding, logo upload, analyst name, organisation, TLP default |
@@ -297,24 +314,30 @@ Just describe what you want in Claude Code. Examples:
  using volatility3. Create a case and save all findings."
 ```
 
-Claude will automatically:
-1. `list_upload` → confirm file is present
-2. `triage_file` → detect type, entropy, suspicious strings, recommend skills
-3. `run_skill` → load skill methodology
-4. `execute_cmd` × N → run tools step by step
-5. Chain additional skills (deobfuscation → RE → C2 extraction → IOC packaging)
-6. `write_file` → save structured report, IOCs, timeline to case folder
+The automated pipeline has usually **already** identified the type, run the right tools, and decoded payloads before you ask. Claude then:
+1. Reads `TOOLS_MANDATE.md` + `iocs.json` + the pre-decoded artifacts in the case folder
+2. Runs the mandated MCP tools for anything deeper (`run_capa`, `run_floss`, `run_speakeasy`, `run_skill`, …)
+3. Chains further decoding (deobfuscation → RE → C2 extraction → IOC packaging)
+4. `write_file` → saves the structured report, IOCs, and timeline to the case folder
 
 ### Case folder structure
 
+The pipeline pre-populates the case; exact files depend on evidence type. A typical layout:
+
 ```
 /workspace/investigations/YYYY-MM-DD/<case-name>/
-├── notes.md        ← opened first: hashes, hypothesis, analyst
-├── iocs.md         ← IOC table with HIGH/MEDIUM/LOW confidence
-├── timeline.md     ← chronological event reconstruction
-├── report.md       ← final report (TLP classification header)
-├── decoded/        ← deobfuscated payloads, extracted strings
-└── rules/          ← generated YARA / Sigma rules
+├── notes.md                 ← hashes, hypothesis, analyst
+├── iocs.json                ← aggregated IOCs (URLs, IPs, domains, techniques)
+├── TOOLS_MANDATE.md         ← what auto-ran + which MCP tools to use next
+├── applicable_skills.json   ← skills matched for this evidence type
+├── decode_chain.md          ← every deobfuscation layer, in order
+├── commands.log             ← full audit trail of every command run
+├── capa.json / floss.json   ← (PE/ELF) MITRE ATT&CK caps + obfuscated strings
+├── *_beautified.{ps1,js}    ← (scripts) deobfuscated payloads
+├── *.sandbox.json           ← (runtime-obfuscated JS) sandbox execution capture
+├── yara_matches.txt         ← YARA hits
+├── recon/ · page/ · scripts/ · blockchain/   ← (URL cases) per-phase evidence
+└── report.md                ← final report (TLP classification header)
 ```
 
 ---
@@ -507,8 +530,11 @@ cyberhawk-docker/
 │       ├── main.py                 ← FastAPI app, CORS, router registration
 │       ├── core/workspace.py       ← Path safety, workspace constants
 │       ├── defaults/branding.json  ← Default branding config
+│       ├── tools/                 ← phishing_browser.py, etherhiding_detector.py
 │       └── routers/
-│           ├── mcp.py              ← MCP SSE + HTTP transport, all 10 tools
+│           ├── mcp.py              ← MCP SSE + HTTP transport, all tools
+│           ├── investigate.py      ← automated URL + evidence investigation pipeline
+│           ├── queue.py            ← upload/investigation queue management
 │           ├── files.py            ← Upload, browse, read, write, hash, delete
 │           ├── skills.py           ← Skill listing and streaming execution
 │           ├── config.py           ← Branding settings + logo management
@@ -524,6 +550,9 @@ cyberhawk-docker/
 │       └── pages/
 │           ├── Dashboard.jsx
 │           ├── UploadZone.jsx
+│           ├── SubmitUrl.jsx        ← automated URL investigation + live log
+│           ├── TriageFile.jsx       ← automated evidence triage + live log
+│           ├── MitmPage.jsx         ← MITM live traffic view
 │           ├── FileBrowser.jsx
 │           ├── ReportViewer.jsx
 │           ├── Terminal.jsx
@@ -554,6 +583,8 @@ cyberhawk-docker/
 | `8090` | CyberHawk Web UI | HTTP |
 | `3002` | MCP + API Server | HTTP / SSE / WebSocket |
 | `2233` | sift-remnux SSH | SSH (when running) |
+
+Companion services (separate compose stacks, reached via the env-var URLs) expose their own ports — e.g. the deobfuscator on `3020` and the MITM proxy — configurable via `DEOBFUSCATOR_URL` / `MITM_PROXY`.
 
 ---
 
